@@ -6,6 +6,7 @@ import android.content.Context
 import android.os.Build
 import androidx.core.content.ContextCompat.getSystemService
 import android.Manifest.permission.*
+import android.app.Activity
 import android.bluetooth.BluetoothDevice
 import android.content.BroadcastReceiver
 import android.content.Intent
@@ -13,6 +14,7 @@ import android.content.IntentFilter
 import androidx.core.content.ContextCompat.checkSelfPermission
 import android.content.pm.PackageManager
 import android.util.Log
+import androidx.core.app.ActivityCompat
 import androidx.core.app.ActivityCompat.requestPermissions
 
 class BluetoothHelper(private val context: Context) {
@@ -92,8 +94,23 @@ class BluetoothHelper(private val context: Context) {
      */
     fun processFoundDevice(device: BluetoothDevice, onDeviceFound: (BluetoothDeviceInfo) -> Unit) {
 
-        val deviceInfo = BluetoothDeviceInfo(device.name, device.address)
+        val deviceName = device.name ?: "UNKNOWN"
+        val deviceInfo = BluetoothDeviceInfo(deviceName, device.address)
         onDeviceFound(deviceInfo)
+    }
+
+    /**
+     * Interactively request permissions for specific cases
+     */
+    fun requestPermissions(activity: Activity) {
+
+        val requestCode = 9999
+
+        // Android 11/R/SDK 30 or less require ACCESS_COARSE_LOCATION
+        if(Build.VERSION.SDK_INT <= Build.VERSION_CODES.R) {
+            val permissions = arrayOf(ACCESS_COARSE_LOCATION)
+            ActivityCompat.requestPermissions(activity, permissions, requestCode)
+        }
     }
 
     /**
@@ -134,7 +151,6 @@ class BluetoothHelper(private val context: Context) {
                         BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
                             Log.i("BluetoothHelper", "ACTION_DISCOVERY_FINISHED")
                             scanFinalize(onScanComplete)
-                            context?.unregisterReceiver(_scanReceiver)
                         }
                     }
                 }
@@ -151,11 +167,13 @@ class BluetoothHelper(private val context: Context) {
         context.registerReceiver(_scanReceiver, filter)
 
         // Start discovery
-        if (checkSelfPermission(context, ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
-            _btAdapter.startDiscovery()
+        if (
+            Build.VERSION.SDK_INT <= Build.VERSION_CODES.R &&
+            checkSelfPermission(context, ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+            Log.e("BluetoothHelper", "Missing ACCESS_COARSE_LOCATION permission for Android R and lower")
         }
         else {
-            Log.e("BluetoothHelper", "Missing ACCESS_FINE_LOCATION permission")
+            _btAdapter.startDiscovery()
         }
     }
 

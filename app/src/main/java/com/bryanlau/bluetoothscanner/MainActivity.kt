@@ -53,9 +53,7 @@ class MainActivity : ComponentActivity() {
         _bluetooth = BluetoothHelper(this)
 
         // Request permissions
-        val requestCode = 9999
-        val permissions = arrayOf(ACCESS_FINE_LOCATION)
-        ActivityCompat.requestPermissions(this, permissions, requestCode)
+        _bluetooth.requestPermissions(this)
 
         enableEdgeToEdge()
         setContent {

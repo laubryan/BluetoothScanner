@@ -7,6 +7,7 @@ import android.os.Build
 import androidx.core.content.ContextCompat.getSystemService
 import android.Manifest.permission.*
 import android.app.Activity
+import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
 import android.content.BroadcastReceiver
 import android.content.Intent
@@ -28,6 +29,21 @@ class BluetoothHelper(private val context: Context) {
 
     init {
 
+    }
+
+    /**
+     * Translate Bluetooth device description
+     */
+    private fun getBluetoothDeviceDescription(bluetoothClass: BluetoothClass): String {
+        return when (bluetoothClass.majorDeviceClass) {
+            BluetoothClass.Device.Major.PHONE -> "Phone"
+            BluetoothClass.Device.Major.COMPUTER -> "Computer"
+            BluetoothClass.Device.Major.AUDIO_VIDEO -> "Audio/Video"
+            BluetoothClass.Device.Major.PERIPHERAL -> "Peripheral"
+            BluetoothClass.Device.Major.IMAGING -> "Imaging Device"
+            BluetoothClass.Device.Major.HEALTH -> "Health Device"
+            else -> "Unknown Type"
+        }
     }
 
     /**
@@ -94,7 +110,12 @@ class BluetoothHelper(private val context: Context) {
     fun processFoundDevice(device: BluetoothDevice, onDeviceFound: (BluetoothDeviceInfo) -> Unit) {
 
         val deviceName = device.name ?: "UNKNOWN"
-        val deviceInfo = BluetoothDeviceInfo(deviceName, device.address)
+        val deviceClass = getBluetoothDeviceDescription(device.bluetoothClass)
+        val deviceInfo = BluetoothDeviceInfo(
+            deviceName,
+            device.address,
+            deviceClass
+        )
         onDeviceFound(deviceInfo)
     }
 

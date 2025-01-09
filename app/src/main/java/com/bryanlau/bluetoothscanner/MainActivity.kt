@@ -72,9 +72,9 @@ fun MainViewPreview() {
     BluetoothScannerTheme {
         val btHelper = BluetoothHelper(LocalContext.current)
         val deviceList = listOf(
-            BluetoothDeviceInfo("Device 1", "00:11:22:33:AA:BB"),
-            BluetoothDeviceInfo("Device 2", "22:33:44:CC:DD:EE"),
-            BluetoothDeviceInfo("Device 3", "23:45:67:89:AB:CD")
+            BluetoothDeviceInfo("Device 1", "00:11:22:33:AA:BB", "Phone"),
+            BluetoothDeviceInfo("Device 2", "22:33:44:CC:DD:EE", "Computer"),
+            BluetoothDeviceInfo("Device 3", "23:45:67:89:AB:CD", "Audio")
         )
         MainPage(btHelper, deviceList.toMutableStateList())
     }
@@ -141,7 +141,7 @@ fun MainPage(
 fun DeviceList(devices: SnapshotStateList<BluetoothDeviceInfo>) {
     LazyColumn {
         items(devices) { device ->
-            DeviceEntry(device.name,  device.address)
+            DeviceEntry(device.name,  device.address, device.deviceClass)
         }
     }
 }
@@ -179,17 +179,18 @@ fun onScanComplete() {
 }
 
 @Composable
-fun DeviceEntry(name: String, address: String, modifier: Modifier = Modifier) {
+fun DeviceEntry(name: String, address: String, deviceClass: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier
         .fillMaxWidth()
         .padding(5.dp)) {
         Text( text = name, style = MaterialTheme.typography.headlineMedium )
         Text( text = address )
+        Text( text = deviceClass )
     }
 }
 
 @Preview(showBackground = true)
 @Composable
 fun DeviceEntryPreview() {
-    DeviceEntry("Bluetooth Device 1", "00:11:22:AA:BB:CC")
+    DeviceEntry("Bluetooth Device 1", "00:11:22:AA:BB:CC", "Phone")
 }

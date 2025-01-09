@@ -15,7 +15,6 @@ import androidx.core.content.ContextCompat.checkSelfPermission
 import android.content.pm.PackageManager
 import android.util.Log
 import androidx.core.app.ActivityCompat
-import androidx.core.app.ActivityCompat.requestPermissions
 
 class BluetoothHelper(private val context: Context) {
 

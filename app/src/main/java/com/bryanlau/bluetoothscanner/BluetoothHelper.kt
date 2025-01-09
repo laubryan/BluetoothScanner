@@ -114,6 +114,21 @@ class BluetoothHelper(private val context: Context) {
     }
 
     /**
+     * Finalize and clean up scan
+     */
+    private fun scanFinalize(onScanComplete: () -> Unit) {
+
+        // Unregister the receiver
+        _scanReceiver?.let {
+            context.unregisterReceiver(it)
+            _scanReceiver = null
+        }
+
+        // Call user completion function
+        onScanComplete()
+    }
+
+    /**
      * Scan for devices
      */
     fun scanForDevices(onDeviceFound: (BluetoothDeviceInfo) -> Unit, onScanComplete: () -> Unit) {
@@ -177,18 +192,4 @@ class BluetoothHelper(private val context: Context) {
         }
     }
 
-    /**
-     * Finalize and clean up scan
-     */
-    private fun scanFinalize(onScanComplete: () -> Unit) {
-
-        // Unregister the receiver
-        _scanReceiver?.let {
-            context.unregisterReceiver(it)
-            _scanReceiver = null
-        }
-
-        // Call user completion function
-        onScanComplete()
-    }
 }

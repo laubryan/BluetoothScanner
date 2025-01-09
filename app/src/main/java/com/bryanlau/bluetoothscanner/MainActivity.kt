@@ -1,12 +1,7 @@
 package com.bryanlau.bluetoothscanner
 
-import android.R
-import android.bluetooth.BluetoothAdapter
-import android.content.Context
 import android.os.Bundle
 import android.util.Log
-import android.view.View
-import android.widget.Button
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -16,6 +11,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
@@ -23,28 +20,27 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.SnapshotStateList
+import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import com.bryanlau.bluetoothscanner.bluetoothhelper.BluetoothDeviceInfo
 import com.bryanlau.bluetoothscanner.bluetoothhelper.BluetoothHelper
 import com.bryanlau.bluetoothscanner.ui.theme.BluetoothScannerTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import android.Manifest.permission.*
-import androidx.core.app.ActivityCompat
-import androidx.core.app.ActivityCompat.requestPermissions
 
 class MainActivity : ComponentActivity() {
 
-    lateinit var _bluetooth : BluetoothHelper
+    private lateinit var _bluetooth : BluetoothHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -58,18 +54,29 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             BluetoothScannerTheme {
-                MainPage(_bluetooth)
+                MainView(_bluetooth)
             }
         }
     }
 }
 
+@Composable
+fun MainView(btHelper: BluetoothHelper) {
+    val deviceList = remember { mutableStateListOf<BluetoothDeviceInfo>() }
+    MainPage(btHelper, deviceList)
+}
+
 @Preview(showBackground = true, widthDp = 320, heightDp = 640)
 @Composable
-fun MainPagePreview() {
+fun MainViewPreview() {
     BluetoothScannerTheme {
         val btHelper = BluetoothHelper(LocalContext.current)
-        MainPage(btHelper, modifier = Modifier)
+        val deviceList = listOf(
+            BluetoothDeviceInfo("Device 1", "00:11:22:33:AA:BB"),
+            BluetoothDeviceInfo("Device 2", "22:33:44:CC:DD:EE"),
+            BluetoothDeviceInfo("Device 3", "23:45:67:89:AB:CD")
+        )
+        MainPage(btHelper, deviceList.toMutableStateList())
     }
 }
 
@@ -77,12 +84,14 @@ fun MainPagePreview() {
  * Main page composable
  */
 @Composable
-fun MainPage(btHelper: BluetoothHelper, modifier: Modifier = Modifier) {
+fun MainPage(
+    btHelper: BluetoothHelper,
+    deviceList: SnapshotStateList<BluetoothDeviceInfo>,
+    modifier: Modifier = Modifier
+) {
 
     var isScanning by remember { mutableStateOf(false) }
-    var discoveredDevices: List<BluetoothDeviceInfo> = emptyList()
     val coroutineScope = rememberCoroutineScope()
-    val context = LocalContext.current
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -100,7 +109,7 @@ fun MainPage(btHelper: BluetoothHelper, modifier: Modifier = Modifier) {
 
                             // Get device list
                             coroutineScope.launch(Dispatchers.IO) {
-                                discoveredDevices = getDeviceList(context, btHelper)
+                                getDeviceList(btHelper) { device -> deviceList.add(device) }
                                 isScanning = false
                             }
                         }
@@ -115,18 +124,24 @@ fun MainPage(btHelper: BluetoothHelper, modifier: Modifier = Modifier) {
             }
         }
     ) {
+        // View Body
         padding ->
         Column(
             modifier = Modifier.padding(padding),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Display items
-            if(!isScanning) {
-                for (device in discoveredDevices) {
-                    DeviceEntry(device.name, device.address)
-                }
-            }
+            // Display list of devices
+            DeviceList(deviceList)
+        }
+    }
+}
+
+@Composable
+fun DeviceList(devices: SnapshotStateList<BluetoothDeviceInfo>) {
+    LazyColumn {
+        items(devices) { device ->
+            DeviceEntry(device.name,  device.address)
         }
     }
 }
@@ -137,12 +152,12 @@ fun MainPage(btHelper: BluetoothHelper, modifier: Modifier = Modifier) {
  * @param btHelper
  * @return a list of Bluetooth devices
  */
-suspend fun getDeviceList(context: Context, btHelper: BluetoothHelper): List<BluetoothDeviceInfo> {
+private fun getDeviceList(btHelper: BluetoothHelper, onDeviceFound: (BluetoothDeviceInfo) -> Unit) {
 
     // Check permissions
     if (!btHelper.hasSufficientPermissions()) {
         Log.e("BluetoothScanner", "App does not have required permissions!")
-        return emptyList()
+        return
     }
 
     // Set up Bluetooth
@@ -153,16 +168,7 @@ suspend fun getDeviceList(context: Context, btHelper: BluetoothHelper): List<Blu
     Log.i("BluetoothScanner", "Bluetooth initialized")
 
     // Scan for devices
-    btHelper.scanForDevices(::onDeviceFound, ::onScanComplete)
-
-    return emptyList()
-}
-
-/**
- * Process device found in scan
- */
-fun onDeviceFound(deviceInfo: BluetoothDeviceInfo) {
-    Log.i("BluetoothScanner", "Found device ${deviceInfo.name} (${deviceInfo.address})")
+    btHelper.scanForDevices(onDeviceFound, ::onScanComplete)
 }
 
 /**
@@ -185,6 +191,5 @@ fun DeviceEntry(name: String, address: String, modifier: Modifier = Modifier) {
 @Preview(showBackground = true)
 @Composable
 fun DeviceEntryPreview() {
-    val context: Context = LocalContext.current
     DeviceEntry("Bluetooth Device 1", "00:11:22:AA:BB:CC")
 }

@@ -1,5 +1,7 @@
 #  BluetoothScanner
 
+![BluetoothScanner app screenshot](https://github.com/laubryan/BluetoothScanner/blob/ca7ad2bf2db1deee024279388a51d88c4602ed98/screenshots/bluetooth-scanner-screenshot.jpg)
+
 ### Description
 A native Android app that scans for nearby Bluetooth devices. For each device that's discovered, it displays the device's friendly name 
 (if available, some devices don't provide it), hardware address and device type.

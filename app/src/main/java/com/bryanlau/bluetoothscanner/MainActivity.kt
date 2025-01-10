@@ -74,7 +74,8 @@ fun MainViewPreview() {
         val deviceList = listOf(
             BluetoothDeviceInfo("Device 1", "00:11:22:33:AA:BB", "Phone"),
             BluetoothDeviceInfo("Device 2", "22:33:44:CC:DD:EE", "Computer"),
-            BluetoothDeviceInfo("Device 3", "23:45:67:89:AB:CD", "Audio")
+            BluetoothDeviceInfo("Device 3", "23:45:67:89:AB:CD", "Audio/Video"),
+            BluetoothDeviceInfo("Device 4", "24:6F:13:57:AB:7E", "Unknown Type")
         )
         MainPage(btHelper, deviceList.toMutableStateList())
     }

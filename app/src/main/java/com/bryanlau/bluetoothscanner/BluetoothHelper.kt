@@ -17,6 +17,33 @@ import android.content.pm.PackageManager
 import android.util.Log
 import androidx.core.app.ActivityCompat
 
+/**
+ *  BluetoothHelper
+ *
+ *  This class scans for Bluetooth devices and returns some basic information
+ *  for each device found.
+ *
+ *  @property context the Android context
+ *
+ *  Provide the Android context at instantiation, and call initialize() before
+ *  calling scanForDevices() to start the scan. Found devices are returned using
+ *  the onDeviceFound callback parameter.
+ *
+ *  For SDK 30 and lower, the following permissions are required:
+ *
+ *    BLUETOOTH
+ *    BLUETOOTH_ADMIN
+ *    ACCESS_COARSE_LOCATION
+ *
+ *    In particular, the location permission needs to be interactively confirmed
+ *    by the user.
+ *
+ *  For SDK 31 and higher, the following permissions are required:
+ *
+ *    BLUETOOTH_SCAN
+ *
+ *
+ */
 class BluetoothHelper(private val context: Context) {
 
     // Interfaces
@@ -33,6 +60,8 @@ class BluetoothHelper(private val context: Context) {
 
     /**
      * Translate Bluetooth device description
+     *
+     * @param bluetoothClass the Bluetooth device class found during discovery
      */
     private fun getBluetoothDeviceDescription(bluetoothClass: BluetoothClass): String {
         return when (bluetoothClass.majorDeviceClass) {
@@ -48,6 +77,8 @@ class BluetoothHelper(private val context: Context) {
 
     /**
      * Get list of missing permissions required for BLuetooth
+     *
+     * @return list of required permissions that the app is missing
      */
     private fun getMissingPermissions() : List<String> {
 
@@ -72,6 +103,8 @@ class BluetoothHelper(private val context: Context) {
 
     /**
      * Does app have sufficient permission for Bluetooth operations
+     *
+     * @return true if the app has sufficient permissions to execute, false otherwise
      */
     fun hasSufficientPermissions() : Boolean {
         if (getMissingPermissions().isEmpty()) return true
@@ -80,6 +113,8 @@ class BluetoothHelper(private val context: Context) {
 
     /**
      * Initialize the class
+     *
+     * @return true if initialization was successful, false otherwise
      */
     fun initialize() : Boolean {
         try {
@@ -106,6 +141,9 @@ class BluetoothHelper(private val context: Context) {
 
     /**
      * Process found device and pass it on
+     *
+     * @param device the Bluetooth device found during discovery
+     * @param onDeviceFound user callback to invoke after device is parsed
      */
     fun processFoundDevice(device: BluetoothDevice, onDeviceFound: (BluetoothDeviceInfo) -> Unit) {
 
@@ -121,6 +159,8 @@ class BluetoothHelper(private val context: Context) {
 
     /**
      * Interactively request permissions for specific cases
+     *
+     * @param activity the Android activity to use for the interactive permission request
      */
     fun requestPermissions(activity: Activity) {
 
@@ -135,6 +175,8 @@ class BluetoothHelper(private val context: Context) {
 
     /**
      * Finalize and clean up scan
+     *
+     * @param onScanComplete the user callback provided from scanForDevices()
      */
     private fun scanFinalize(onScanComplete: () -> Unit) {
 
@@ -150,6 +192,9 @@ class BluetoothHelper(private val context: Context) {
 
     /**
      * Scan for devices
+     *
+     * @param onDeviceFound user callback to invoke when a device is found
+     * @param onScanComplete user callback to invoke when the scan is finished
      */
     fun scanForDevices(onDeviceFound: (BluetoothDeviceInfo) -> Unit, onScanComplete: () -> Unit) {
 

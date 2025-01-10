@@ -182,7 +182,7 @@ fun DeviceEntry(name: String, address: String, deviceClass: String, modifier: Mo
     Column(modifier = modifier
         .fillMaxWidth()
         .padding(5.dp)) {
-        Text( text = name, style = MaterialTheme.typography.headlineMedium )
+        Text( text = name, style = MaterialTheme.typography.headlineSmall )
         Text( text = address )
         Text( text = deviceClass )
     }

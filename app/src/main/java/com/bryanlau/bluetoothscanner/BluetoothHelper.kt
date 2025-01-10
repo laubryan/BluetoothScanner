@@ -50,12 +50,31 @@ class BluetoothHelper(private val context: Context) {
     private lateinit var _btManager: BluetoothManager
     private lateinit var _btAdapter: BluetoothAdapter
     private var _initialized = false
+    private var _scanInProgress = false
 
     // Broadcast
     var _scanReceiver: BroadcastReceiver? = null
 
     init {
 
+    }
+
+    /**
+     * Cancel an ongoing scan, onScanComplete() will be called
+     */
+    fun cancelScan() {
+
+        // No scan in progress or uninitialized
+        if (!_scanInProgress || !_initialized) return
+
+        // Cancel the current scan
+        if (_btAdapter.cancelDiscovery()) {
+            _scanInProgress = false
+        }
+        else {
+            // Error cancelling scan
+            Log.e("BluetoothHelper", "Error attempting to cancel scan")
+        }
     }
 
     /**
@@ -186,6 +205,9 @@ class BluetoothHelper(private val context: Context) {
             _scanReceiver = null
         }
 
+        // Update state
+        _scanInProgress = false
+
         // Call user completion function
         onScanComplete()
     }
@@ -253,6 +275,7 @@ class BluetoothHelper(private val context: Context) {
             Log.e("BluetoothHelper", "Missing ACCESS_COARSE_LOCATION permission for Android R and lower")
         }
         else {
+            _scanInProgress = true
             _btAdapter.startDiscovery()
         }
     }

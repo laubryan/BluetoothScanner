@@ -126,8 +126,8 @@ fun MainPage(
                             }
                         }
                         else {
-                            // TODO: Stop scanning
-                            isScanning = false
+                            // Cancel the scan
+                            btHelper.cancelScan()
                         }
                     }) {
                         Text(text = if (isScanning) "Stop Scanning" else "Scan Now")

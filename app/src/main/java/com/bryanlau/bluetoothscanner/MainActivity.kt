@@ -104,17 +104,23 @@ fun MainPage(
                     Button(onClick = {
                         // Idle
                         if(!isScanning) {
-                            // Set scanning flag
+                            // Set initial state
                             isScanning = true
 
-                            // Get device list
+                            // Start discovery
                             coroutineScope.launch(Dispatchers.IO) {
-                                getDeviceList(btHelper) { device -> deviceList.add(device) }
-                                isScanning = false
+                                getDeviceList(
+                                    btHelper,
+                                    onDeviceFound = { device -> deviceList.add(device) },
+                                    onScanComplete = {
+                                        isScanning = false
+                                        Log.i("BluetoothScanner", "Scan complete")
+                                    }
+                                )
                             }
                         }
                         else {
-                            // Scanning
+                            // TODO: Stop scanning
                             isScanning = false
                         }
                     }) {
@@ -152,7 +158,7 @@ fun DeviceList(devices: SnapshotStateList<BluetoothDeviceInfo>) {
  * @param btHelper
  * @return a list of Bluetooth devices
  */
-private fun getDeviceList(btHelper: BluetoothHelper, onDeviceFound: (BluetoothDeviceInfo) -> Unit) {
+private fun getDeviceList(btHelper: BluetoothHelper, onDeviceFound: (BluetoothDeviceInfo) -> Unit, onScanComplete: () -> Unit) {
 
     // Check permissions
     if (!btHelper.hasSufficientPermissions()) {
@@ -168,14 +174,7 @@ private fun getDeviceList(btHelper: BluetoothHelper, onDeviceFound: (BluetoothDe
     Log.i("BluetoothScanner", "Bluetooth initialized")
 
     // Scan for devices
-    btHelper.scanForDevices(onDeviceFound, ::onScanComplete)
-}
-
-/**
- * Device scan finished
- */
-fun onScanComplete() {
-    Log.i("BluetoothScanner", "Scan complete")
+    btHelper.scanForDevices(onDeviceFound, onScanComplete)
 }
 
 @Composable

@@ -106,6 +106,7 @@ fun MainPage(
                         if(!isScanning) {
                             // Set initial state
                             isScanning = true
+                            deviceList.clear()
 
                             // Start discovery
                             coroutineScope.launch(Dispatchers.IO) {

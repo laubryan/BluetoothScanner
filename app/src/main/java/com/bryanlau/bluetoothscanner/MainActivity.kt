@@ -112,7 +112,12 @@ fun MainPage(
                             coroutineScope.launch(Dispatchers.IO) {
                                 getDeviceList(
                                     btHelper,
-                                    onDeviceFound = { device -> deviceList.add(device) },
+                                    onDeviceFound = { device ->
+                                        // Don't add duplicates
+                                        if (!deviceList.contains(device)) {
+                                            deviceList.add(device)
+                                        }
+                                    },
                                     onScanComplete = {
                                         isScanning = false
                                         Log.i("BluetoothScanner", "Scan complete")

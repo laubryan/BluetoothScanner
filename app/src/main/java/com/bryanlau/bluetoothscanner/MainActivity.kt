@@ -5,18 +5,29 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Label
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import com.bryanlau.bluetoothscanner.bluetoothhelper.BluetoothDeviceInfo
 import com.bryanlau.bluetoothscanner.bluetoothhelper.BluetoothHelper
 import com.bryanlau.bluetoothscanner.ui.theme.BluetoothScannerTheme
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -92,6 +104,7 @@ fun MainPage(
 ) {
 
     var isScanning by remember { mutableStateOf(false) }
+    var scanBLE by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
     Scaffold(
@@ -100,8 +113,25 @@ fun MainPage(
             BottomAppBar() {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    horizontalArrangement = Arrangement.SpaceAround,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
+                    FilterChip(
+                        onClick = { scanBLE = !scanBLE },
+                        label = { Text("BLE") },
+                        selected = scanBLE,
+                        leadingIcon = if (scanBLE) {
+                            {
+                                Icon(
+                                    imageVector = Icons.Filled.Done,
+                                    contentDescription = "Done icon",
+                                    modifier = Modifier.size(FilterChipDefaults.IconSize)
+                                )
+                            }
+                        }
+                        else null,
+                        enabled = !isScanning
+                    )
                     Button(onClick = {
                         // Idle
                         if(!isScanning) {
@@ -110,25 +140,12 @@ fun MainPage(
                             deviceList.clear()
 
                             // Start discovery
-                            coroutineScope.launch(Dispatchers.IO) {
-                                getDeviceList(
-                                    btHelper,
-                                    onDeviceFound = { device ->
-                                        // Don't add duplicates
-                                        if (!deviceList.contains(device)) {
-                                            deviceList.add(device)
-                                        }
-                                    },
-                                    onScanComplete = {
-                                        isScanning = false
-                                        Log.i("BluetoothScanner", "Scan complete")
-                                    }
-                                )
-                            }
+                            startDiscovery(coroutineScope, btHelper, scanBLE, deviceList, onScanComplete = { isScanning = false })
                         }
                         else {
-                            // Cancel the scan
-                            btHelper.cancelScan()
+                            // Cancel scan
+                            Log.i("BluetoothScanner", "Cancel scan")
+                            btHelper.cancelScan(scanBLE, onScanComplete = { isScanning = false })
                         }
                     }) {
                         Text(text = if (isScanning) "Stop Scanning" else "Scan Now")
@@ -150,6 +167,38 @@ fun MainPage(
     }
 }
 
+/**
+ * Scan for normal Bluetooth devices
+ *
+ * @param btHelper Bluetooth helper class
+ * @param deviceList list of discovered devices
+ * @param onScanComplete scan complete callback
+ */
+private fun startDiscovery(
+    coroutineScope: CoroutineScope,
+    btHelper: BluetoothHelper,
+    scanForBLE: Boolean,
+    deviceList: SnapshotStateList<BluetoothDeviceInfo>,
+    onScanComplete: () -> Unit
+) {
+    coroutineScope.launch(Dispatchers.IO) {
+        getDeviceList(
+            btHelper,
+            scanForBLE,
+            onDeviceFound = { device ->
+                // Don't add duplicates
+                if (!deviceList.contains(device)) {
+                    deviceList.add(device)
+                }
+            },
+            onScanComplete = {
+                onScanComplete()
+                Log.i("BluetoothScanner", "Scan complete")
+            }
+        )
+    }
+}
+
 @Composable
 fun DeviceList(devices: SnapshotStateList<BluetoothDeviceInfo>) {
     LazyColumn {
@@ -165,7 +214,7 @@ fun DeviceList(devices: SnapshotStateList<BluetoothDeviceInfo>) {
  * @param btHelper
  * @return a list of Bluetooth devices
  */
-private fun getDeviceList(btHelper: BluetoothHelper, onDeviceFound: (BluetoothDeviceInfo) -> Unit, onScanComplete: () -> Unit) {
+private fun getDeviceList(btHelper: BluetoothHelper, scanForBLE: Boolean, onDeviceFound: (BluetoothDeviceInfo) -> Unit, onScanComplete: () -> Unit) {
 
     // Check permissions
     if (!btHelper.hasSufficientPermissions()) {
@@ -181,7 +230,7 @@ private fun getDeviceList(btHelper: BluetoothHelper, onDeviceFound: (BluetoothDe
     Log.i("BluetoothScanner", "Bluetooth initialized")
 
     // Scan for devices
-    btHelper.scanForDevices(onDeviceFound, onScanComplete)
+    btHelper.scanForDevices(scanForBLE, onDeviceFound, onScanComplete)
 }
 
 @Composable

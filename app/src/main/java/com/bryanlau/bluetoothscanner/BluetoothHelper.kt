@@ -9,11 +9,15 @@ import android.Manifest.permission.*
 import android.app.Activity
 import android.bluetooth.BluetoothClass
 import android.bluetooth.BluetoothDevice
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanResult
 import android.content.BroadcastReceiver
 import android.content.Intent
 import android.content.IntentFilter
 import androidx.core.content.ContextCompat.checkSelfPermission
 import android.content.pm.PackageManager
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.ActivityCompat
 
@@ -49,8 +53,14 @@ class BluetoothHelper(private val context: Context) {
     // Interfaces
     private lateinit var _btManager: BluetoothManager
     private lateinit var _btAdapter: BluetoothAdapter
+    private lateinit var _bleScanCallback: ScanCallback
+
+    // State
     private var _initialized = false
     private var _scanInProgress = false
+
+    // Constants
+    private val BLE_SCAN_TIMEOUT: Long = 12000 // 12 seconds
 
     // Broadcast
     var _scanReceiver: BroadcastReceiver? = null
@@ -62,19 +72,30 @@ class BluetoothHelper(private val context: Context) {
     /**
      * Cancel an ongoing scan, onScanComplete() will be called
      */
-    fun cancelScan() {
+    fun cancelScan(scanForBLE: Boolean, onScanComplete: () -> Unit) {
 
         // No scan in progress or uninitialized
         if (!_scanInProgress || !_initialized) return
 
         // Cancel the current scan
-        if (_btAdapter.cancelDiscovery()) {
+        if (scanForBLE) {
+
+            // Cancel BLE scan
             _scanInProgress = false
+            _btAdapter.bluetoothLeScanner.stopScan(_bleScanCallback)
         }
         else {
-            // Error cancelling scan
-            Log.e("BluetoothHelper", "Error attempting to cancel scan")
+            // Cancel Bluetooth scan
+            if (_btAdapter.cancelDiscovery()) {
+                _scanInProgress = false
+            } else {
+                // Error cancelling scan
+                Log.e("BluetoothHelper", "Error attempting to cancel scan")
+            }
         }
+
+        // Finalize
+        onScanComplete()
     }
 
     /**
@@ -197,12 +218,14 @@ class BluetoothHelper(private val context: Context) {
      *
      * @param onScanComplete the user callback provided from scanForDevices()
      */
-    private fun scanFinalize(onScanComplete: () -> Unit) {
+    private fun scanFinalize(scanForBLE: Boolean, onScanComplete: () -> Unit) {
 
         // Unregister the receiver
-        _scanReceiver?.let {
-            context.unregisterReceiver(it)
-            _scanReceiver = null
+        if (scanForBLE) {
+            _scanReceiver?.let {
+                context.unregisterReceiver(it)
+                _scanReceiver = null
+            }
         }
 
         // Update state
@@ -218,8 +241,25 @@ class BluetoothHelper(private val context: Context) {
      * @param onDeviceFound user callback to invoke when a device is found
      * @param onScanComplete user callback to invoke when the scan is finished
      */
-    fun scanForDevices(onDeviceFound: (BluetoothDeviceInfo) -> Unit, onScanComplete: () -> Unit) {
+    fun scanForDevices(scanForBLE: Boolean, onDeviceFound: (BluetoothDeviceInfo) -> Unit, onScanComplete: () -> Unit) {
 
+        if (scanForBLE) {
+            // Scan for BLE devices
+            startDiscoveryBLE(onDeviceFound, onScanComplete)
+        }
+        else {
+            // Scan for Bluetooth devices
+            startDiscoveryBT(onDeviceFound, onScanComplete)
+        }
+    }
+
+    /**
+     * Start discovery for Bluetooth devices
+     */
+    private fun startDiscoveryBT(
+        onDeviceFound: (BluetoothDeviceInfo) -> Unit,
+        onScanComplete: () -> Unit
+    ) {
         // Initialize receiver if required
         if (_scanReceiver == null) {
 
@@ -237,8 +277,7 @@ class BluetoothHelper(private val context: Context) {
                                         BluetoothDevice.EXTRA_DEVICE,
                                         BluetoothDevice::class.java
                                     )
-                                }
-                                else {
+                                } else {
                                     intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE)
                                 }
                             device?.let { processFoundDevice(it, onDeviceFound) }
@@ -252,7 +291,7 @@ class BluetoothHelper(private val context: Context) {
                         // Scan complete
                         BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> {
                             Log.i("BluetoothHelper", "ACTION_DISCOVERY_FINISHED")
-                            scanFinalize(onScanComplete)
+                            scanFinalize(false, onScanComplete)
                         }
                     }
                 }
@@ -271,13 +310,60 @@ class BluetoothHelper(private val context: Context) {
         // Start discovery
         if (
             Build.VERSION.SDK_INT <= Build.VERSION_CODES.R &&
-            checkSelfPermission(context, ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            Log.e("BluetoothHelper", "Missing ACCESS_COARSE_LOCATION permission for Android R and lower")
-        }
-        else {
+            checkSelfPermission(
+                context,
+                ACCESS_COARSE_LOCATION
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            Log.e(
+                "BluetoothHelper",
+                "Missing ACCESS_COARSE_LOCATION permission for Android R and lower"
+            )
+        } else {
             _scanInProgress = true
             _btAdapter.startDiscovery()
         }
+    }
+
+
+    /**
+     * Start discovery for BLE devices
+     */
+    private fun startDiscoveryBLE(onDeviceFound: (BluetoothDeviceInfo) -> Unit, onScanComplete: () -> Unit) {
+
+        val bleScanner = _btAdapter.bluetoothLeScanner
+
+        // Scan callback function
+        _bleScanCallback = object : ScanCallback() {
+
+            // Found device
+            override fun onScanResult(callbackType: Int, result: ScanResult?) {
+                super.onScanResult(callbackType, result)
+                if (result != null) {
+                    if (result.device != null) {
+                        processFoundDevice(result.device, onDeviceFound)
+                    }
+                }
+            }
+        }
+
+        // Start scanner timeout
+        Handler(Looper.getMainLooper()).postDelayed(object: Runnable {
+            override fun run() {
+                // Timeout
+                if (_scanInProgress) {
+                    bleScanner.stopScan(_bleScanCallback)
+
+                    // Finalize
+                    Log.i("BluetoothScanner", "Scan stopping due to timeout")
+                    scanFinalize(true, onScanComplete)
+                }
+            }
+        }, BLE_SCAN_TIMEOUT)
+
+        // Start BLE discovery
+        _scanInProgress = true
+        bleScanner.startScan(_bleScanCallback)
     }
 
 }

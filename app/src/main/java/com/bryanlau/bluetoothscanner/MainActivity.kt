@@ -5,22 +5,31 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardElevation
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -40,6 +49,9 @@ import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -155,9 +167,12 @@ fun MainPage(
         }
     ) {
         // View Body
-        padding ->
+        paddingValues ->
         Column(
-            modifier = Modifier.padding(padding),
+            modifier = Modifier
+                .fillMaxSize()
+                .background(color = Color.LightGray)
+                .padding(paddingValues),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -201,9 +216,14 @@ private fun startDiscovery(
 
 @Composable
 fun DeviceList(devices: SnapshotStateList<BluetoothDeviceInfo>) {
-    LazyColumn {
+    LazyColumn(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .padding(horizontal = 8.dp)
+            .fillMaxSize()
+    ) {
         items(devices) { device ->
-            DeviceEntry(device.name,  device.address, device.deviceClass)
+            DeviceEntry(device.name, device.address, device.deviceClass)
         }
     }
 }
@@ -235,12 +255,18 @@ private fun getDeviceList(btHelper: BluetoothHelper, scanForBLE: Boolean, onDevi
 
 @Composable
 fun DeviceEntry(name: String, address: String, deviceClass: String, modifier: Modifier = Modifier) {
-    Column(modifier = modifier
-        .fillMaxWidth()
-        .padding(5.dp)) {
-        Text( text = name, style = MaterialTheme.typography.headlineSmall )
-        Text( text = address )
-        Text( text = deviceClass )
+    ElevatedCard(
+        modifier = Modifier.shadow(elevation = 3.dp)
+    ) {
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(10.dp)
+        ) {
+            Text(text = name, style = MaterialTheme.typography.headlineSmall)
+            Text(text = address)
+            Text(text = deviceClass)
+        }
     }
 }
 
